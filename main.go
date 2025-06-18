@@ -5,9 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"strings"
 	"slices"
 	"strconv"
+	"strings"
 )
 
 type Task struct{
@@ -21,6 +21,10 @@ type Tasks struct{
 }
 
 func showTasks(tasks *Tasks){
+	if len(tasks.TaskList) == 0{
+		fmt.Println("no tasks found")
+		return
+	}
 	for id ,task:=range tasks.TaskList{
 		var marker byte;
 		if task.IsCompleted{
@@ -49,6 +53,7 @@ func addTask(description string ,tasks * Tasks){
 
 func deleteTask(id int,tasks * Tasks){
 	if id > 0 && id <= len(tasks.TaskList){
+		description :=tasks.TaskList[id-1].Description
 		tasks.TaskList = slices.Delete(tasks.TaskList,id-1,id)
 		data,err := json.Marshal(*tasks)
 		if err!=nil{
@@ -58,11 +63,12 @@ func deleteTask(id int,tasks * Tasks){
 		if err!=nil{
 			return
 		}
-		fmt.Println("task deleted successfully")
+		fmt.Printf("task '%s' deleted successfully\n",description)
 	}else{
 		fmt.Println("enter valid id")
 	}
 }
+
 func toggleTask(id int,tasks * Tasks){
 	if id > 0 && id <= len(tasks.TaskList){
 		tasks.TaskList[id-1].IsCompleted = !tasks.TaskList[id-1].IsCompleted;
@@ -82,13 +88,31 @@ func toggleTask(id int,tasks * Tasks){
 		}else{
 			message = "not completed"
 		}
-		fmt.Printf("task %d is marked as %s\n",id,message)
+		fmt.Printf("task '%s' is marked as %s\n",tasks.TaskList[id-1].Description,message)
 	}else{
 		fmt.Println("enter valid id")
 	}
 }
 
+func help(){
+	fmt.Println("The following are valid commands:")
+	fmt.Println("list or l - to show the list")
+	fmt.Println("add <text> or a <text> - to add a task")
+	fmt.Println("delete <id> or a <id> - to delete a task")
+	fmt.Println("toggle <id> or t <id> - to toggle a task")
+	fmt.Println("quit or q - to exit the program")
+}
+
 func main(){
+	_,err := os.Stat("tasks.json")
+	if err !=nil{
+		data := []byte("{\"taskList\":[]}")
+		err = os.WriteFile("tasks.json",data,0644)
+		if err!=nil{
+			fmt.Println("error: ",err)
+		}
+	}
+
 	data, err := os.ReadFile("tasks.json")
 
 	if err != nil {
@@ -113,25 +137,36 @@ func main(){
 		option := strings.Fields(input)
 		if(len(option)==0){
 
-		}else if option[0] == "show" || option[0]=="s"{
+		}else if (option[0] == "list" || option[0]=="l")&& len(option)==1{
+
 			showTasks(&tasks)
-		} else if option[0] == "quit" {
+
+		} else if (option[0] == "quit" || option[0]=="q") && len(option)==1{
+
 			break
+
 		} else if option[0] == "help" || option[0]=="h"{
 
-		}else if option[0] == "add" && len(option) != 1{
+			help()
+
+		}else if (option[0] == "add" || option[0]=="a") && len(option) != 1{
+
 			description:=option[1]
 			for i:=2; i<len(option); i++{
 				description+=" "+option[i]
 			}
 			addTask(description,&tasks)
+
 		}else if (option[0] == "delete" || option[0]=="d")&& len(option)== 2{
+
 			id,err:= strconv.Atoi(option[1])
 			if err!=nil{
 				fmt.Println("enter integer as id")
 			}
 			deleteTask(id,&tasks)
+
 		}else if (option[0]=="toggle" || option[0]=="t") && len(option) ==2{
+
 			id,err:= strconv.Atoi(option[1])
 			if err!=nil{
 				fmt.Println("enter integer as id")
@@ -139,8 +174,10 @@ func main(){
 			toggleTask(id,&tasks)
 
 		}else{
+
 			fmt.Println("invalid command")
 			fmt.Println("type h or help for help")
+
 		}
 	}
 }
